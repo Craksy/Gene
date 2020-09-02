@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from gene import ConnectionGene
 from dataclasses import dataclass
 from enum import Enum
 from copy import deepcopy
@@ -24,14 +23,13 @@ class NodeType(Enum):
     bias = 'bias'
     hidden = 'hidden'
 
-@dataclass()
+@dataclass
 class NodeGene:
     identity: int
     typ: str
 
     def __repr__(self):
         return 'N' + str(self.identity)
-
 
 
 class ConnectionGene:
@@ -76,8 +74,12 @@ class Genome:
         for inp in range(num_outputs, num_inputs+num_outputs):
             self.add_node(NodeType.input)
             for out in range(num_outputs):
-                con = ConnectionGene(inp, out, 0)
+                rweight = self.generate_random_weight()
+                con = ConnectionGene(inp, out, rweight)
                 self.connection_genes.append(con)
+
+    def generate_random_weight(self):
+        return random.uniform(-2, 2)
 
     def add_node(self, typ):
         identity = next(self.node_ids)
@@ -99,7 +101,8 @@ class Genome:
         node = self.add_node(NodeType.hidden)
         old_out = con.out_node
         con.out_node = node
-        new_connection = ConnectionGene(node, old_out, 0)
+        new_weight = self.generate_random_weight()
+        new_connection = ConnectionGene(node, old_out, new_weight)
         self.connection_genes.append(new_connection)
 
     def mutate_new_weight(self):
@@ -145,5 +148,6 @@ class Genome:
          # pick a pair randomly from the found matches.
          n1, n2 = random.choice(matches)
          logger.debug('\tpicked match: %s, %s', n1, n2)
-         new_con = ConnectionGene(n1, n2, 0)
+         new_weight = self.generate_random_weight()
+         new_con = ConnectionGene(n1, n2, new_weight)
          self.connection_genes.append(new_con)
