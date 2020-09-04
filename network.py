@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 
 import math
+from dataclasses import dataclass
 
-
-# TODO: rework this entire thing. firing should be handled by nodes alone.
-# weights should be simply data classes
-
-
+@dataclass
 class Weight:
-    def __init__(self, input_node, output_node, weight):
-        self.input_node = input_node
-        self.output_node = output_node
-        self.weight = weight
+    input_node: int
+    output_node: int
+    weight: float
 
 class Neuron:
     def __init__(self, node_id):
@@ -54,9 +50,9 @@ class Network:
         for node in genome.node_genes:
             new_node = Neuron(node.identity)
             self.nodes.append(new_node)
-            if node.typ.value == 'input':
+            if node.typ == 'input':
                 self.input_nodes.append(new_node)
-            if node.typ.value == 'output':
+            if node.typ == 'output':
                 self.output_nodes.append(new_node)
 
         for g in genome.connection_genes:

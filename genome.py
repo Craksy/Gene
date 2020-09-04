@@ -15,13 +15,6 @@ class Innovation:
         cls.next_innovation += 1
         return cls.next_innovation
 
-class NodeType(Enum):
-    # TODO: decide if i actually want this is an enum.
-    # so far i've just been checking against raw strings anyway.
-    input = 'input'
-    output = 'output'
-    bias = 'bias'
-    hidden = 'hidden'
 
 @dataclass
 class NodeGene:
@@ -39,6 +32,7 @@ class ConnectionGene:
         self.weight = weight
         self.enabled = True
         self.innovation = Innovation.get_next()
+        self.species = None
 
     def __repr__(self):
          return 'ConnectionGene({}, {}, {})'.format(self.in_node,
@@ -51,28 +45,20 @@ class Genome:
         Initialize a genome. Since reproduction happens through cloning, this
         function is used solely to create the initial ~queen genome~
         """
+        self.next_node_id = 0
+        self.fitness = 0
         self.node_genes = []
         self.connection_genes = []
+        self.species = None
         logger.debug('creating genome')
-
-        # generator for node ids
-        # this might make the implementation prettier elsewhere in the code, but
-        # this in itself is pretty ugly
-        def id_gen():
-            next_id = 0
-            while True:
-                yield next_id
-                next_id += 1
-
-        self.node_ids = id_gen()
 
         # initialize the genome with input and output nodes and fully connect
         # them
         for out in range(num_outputs):
-            self.add_node(NodeType.output)
+            self.add_node('output')
 
         for inp in range(num_outputs, num_inputs+num_outputs):
-            self.add_node(NodeType.input)
+            self.add_node('input')
             for out in range(num_outputs):
                 rweight = self.generate_random_weight()
                 con = ConnectionGene(inp, out, rweight)
@@ -82,7 +68,8 @@ class Genome:
         return random.uniform(-2, 2)
 
     def add_node(self, typ):
-        identity = next(self.node_ids)
+        identity = self.next_node_id
+        self.next_node_id += 1
         self.node_genes.append(NodeGene(identity=identity, typ=typ))
         return identity
 
@@ -92,13 +79,14 @@ class Genome:
     def mutate(self):
         # Randomly apply different mutations according to configured
         # probabilities
-        pass
+        self.mutate_new_node()
+        self.mutate_new_weight()
 
     def mutate_new_node(self):
         # TODO: disable old weight and create two entirely new connection genes.
         logger.debug('mutating new node')
         con:ConnectionGene = random.choice(self.connection_genes)
-        node = self.add_node(NodeType.hidden)
+        node = self.add_node('hidden')
         old_out = con.out_node
         con.out_node = node
         new_weight = self.generate_random_weight()
@@ -116,8 +104,8 @@ class Genome:
          logger.debug('mutating new weight')
          for n1 in self.node_genes:
             for n2 in self.node_genes:
-                if n2.typ.value == 'input' or \
-                   n1.typ.value == 'output' or \
+                if n2.typ == 'input' or \
+                   n1.typ == 'output' or \
                    n1 is n2:
                     continue
 
