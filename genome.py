@@ -40,6 +40,7 @@ class ConnectionGene:
                                                     self.weight)
 
 class Genome:
+    # TODO: give each genome an ID.
     def __init__(self, num_inputs, num_outputs):
         """
         Initialize a genome. Since reproduction happens through cloning, this
@@ -79,8 +80,36 @@ class Genome:
     def mutate(self):
         # Randomly apply different mutations according to configured
         # probabilities
-        self.mutate_new_node()
-        self.mutate_new_weight()
+
+        # TODO: pull mutate probabilities from config
+        probabilities = dict(
+            new_node = .15,
+            new_weight = .25,
+            modify_weight = .5,
+            mutate_again = .5
+        )
+
+        r = random.random()
+        if r >= probabilities['new_node']:
+            self.mutate_new_node()
+
+        r = random.random()
+        if r >= probabilities['new_weight']:
+            self.mutate_new_weight()
+
+        r = random.random()
+        if r >= probabilities['modify_weight']:
+            self.mutate_modify_weight()
+
+        r = random.random()
+        if r >= probabilities['mutate_again']:
+            self.mutate()
+
+    def mutate_modify_weight(self):
+        con = random.choice(self.connection_genes)
+        amount = random.random() - .5
+        con.weight += amount
+
 
     def mutate_new_node(self):
         # TODO: disable old weight and create two entirely new connection genes.
@@ -130,6 +159,7 @@ class Genome:
                     matches.append((n1.identity, n2.identity))
 
          if not matches:
+            return
             raise Exception('Failed to mutate weight. No unconnected nodes excist')
          logger.debug('\tmatches %s', matches)
 

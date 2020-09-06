@@ -28,7 +28,7 @@ class Gene:
         while len(initial_species.population) < initial_species.population_limit:
             new_genome = initial_species.queen.clone()
             new_genome.mutate()
-            initial_species.population.append(new_genome)
+            initial_species.add_genome(new_genome)
 
     def add_new_species(self, queen):
         logger.debug('adding new species from queen genome %s', queen)
@@ -46,20 +46,25 @@ class Gene:
         for sp in self.species:
             for genome in sp.population:
                 population.append(genome)
-        comp_threshold = 5
+        # TODO: pull comparison threshold from config
+        comp_threshold = 7
 
         # TODO: add some logging to this function.
         # it's gonna be a bitch to debug otherwise
         for genome in population:
+            # yeah this doesn't really make sense untill i give genomes ids.
+            # i'll keep it here just as a reminder to get that shit done.
             logger.debug('checking genome %s', genome)
             compatible = False
             for sp in self.species:
-                if genome.species.identity == sp.identity:
-                    continue
-                if sp.get_compatibility_score(genome) < comp_threshold:
+                logger.debug('checking compatibility with species (%i)',
+                             sp.identity)
+                comp_score = sp.get_compatibility_score(genome)
+                if comp_score < comp_threshold:
+                    logger.debug('genome was compatible(%i). assigning to species.', comp_score)
                     # if genome already belongs to a species remove it from that
                     # species
-                    if genome.specees:
+                    if genome.species:
                         genome.species.remove_genome(genome)
                     sp.add_genome(genome)
                     compatible = True
@@ -67,8 +72,9 @@ class Gene:
             if compatible:
                 continue
 
+            logger.debug('found no compatible species. creating new one from genome')
+            genome.species.remove_genome(genome)
             self.add_new_species(genome)
-
 
     def evaluate_all_species(self):
         for sp in self.species:

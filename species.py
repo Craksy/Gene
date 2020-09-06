@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+from logger import logger
 
 class Species:
     def __init__(self, queen_genome, sid):
        self.queen = queen_genome
        self.identity = sid
-       self.population = [self.queen]
+       self.population = []
+       self.add_genome(self.queen)
        self.population_limit = 50
        self.population_fitness = 0
 
@@ -47,10 +49,25 @@ class Species:
         matching_genes = queen_set & comp_set
         disjoint_genes = queen_set ^ comp_set
 
+        # TODO: find out why the fuck this piece of shit is not working.
+        # it's outputting zero weight difference, even though there's definitely
+        # matching innovations with different weight values.
+        # i'm an actual retard. I was printing it as an integer, even though it
+        # was correctly calculating the float value all along.
+        # I'll keep this here just as a reminder.
+        # fuckassdickshitcuntfuckteemo
+
+        weight_diff = 0.0
         weight_diff = sum(
-            abs(queen_innovs[i].weight - comp_innovs[i].weight)
-            for i in matching_genes)
+            [abs(queen_innovs[i].weight - comp_innovs[i].weight)
+            for i in matching_genes], 0.0)
 
         score = len(disjoint_genes)*c1 + weight_diff*c3
+        logger.debug('genome had %i matching genes and %i disjoint genes',
+                     len(matching_genes),
+                     len(disjoint_genes))
+
+        logger.debug('difference in matching genes is %.3f and contributes %.3f to the total score',
+                     weight_diff, weight_diff*c3)
 
         return score
