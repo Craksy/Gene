@@ -34,6 +34,9 @@ class ConnectionGene:
         self.innovation = Innovation.get_next()
         self.species = None
 
+    def copy(self):
+        return deepcopy(self)
+
     def __repr__(self):
          return 'ConnectionGene({}, {}, {})'.format(self.in_node,
                                                     self.out_node,
@@ -48,6 +51,7 @@ class Genome:
         """
         self.next_node_id = 0
         self.fitness = 0
+        # REVIEW: should nodes_genes be a dict mapping IDs to types instead?
         self.node_genes = []
         self.connection_genes = []
         self.species = None
@@ -110,17 +114,20 @@ class Genome:
         amount = random.random() - .5
         con.weight += amount
 
-
     def mutate_new_node(self):
-        # TODO: disable old weight and create two entirely new connection genes.
         logger.debug('mutating new node')
-        con:ConnectionGene = random.choice(self.connection_genes)
+        old_con:ConnectionGene = random.choice(self.connection_genes)
+
         node = self.add_node('hidden')
-        old_out = con.out_node
-        con.out_node = node
+        mirror_in = old_con.in_node
+        fresh_out = old_con.out_node
+        old_con.enabled = False
+
         new_weight = self.generate_random_weight()
-        new_connection = ConnectionGene(node, old_out, new_weight)
-        self.connection_genes.append(new_connection)
+        mirror_connection = ConnectionGene(mirror_in, node, old_con.weight)
+        fresh_connection = ConnectionGene(node, fresh_out, new_weight)
+        self.connection_genes.append(mirror_connection)
+        self.connection_genes.append(fresh_connection)
 
     def mutate_new_weight(self):
          # find possibly pairs of unconnected nodes
@@ -129,6 +136,10 @@ class Genome:
          # every connection, for every node, for every node. it's 3 nested
          # loops, potentially looping through every single combination of
          # elements in the network.
+
+         # REVIEW: if we add a weight that has previously been disabled, should
+         # we just reenable it instead?
+
          matches = []
          logger.debug('mutating new weight')
          for n1 in self.node_genes:

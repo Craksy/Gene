@@ -35,6 +35,8 @@ class Neuron:
         self.value = self.activate(self.value)
         for weight in self._outputs:
             out_node = weight.output_node
+            if not out_node.enabled:
+                continue
             base_value = self.value * weight.weight
             out_node.feed(base_value)
         self.excited = False
