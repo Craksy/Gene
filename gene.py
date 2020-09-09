@@ -158,6 +158,25 @@ class Gene:
         logger.debug('{}', new_genome.connection_genes)
         return new_genome
 
+    def assign_population_cap(self):
+        # TODO: assign population caps based on shared fitness.
+        # to do this first compile a list of adjusted fitness scores of all
+        # species. normalize the list and assign each species a population cap
+        # equal to the total population limit multiplied by their normalized
+        # score.
+
+        population_size = 50
+
+        score_total = sum(sp.get_adjusted_fitness() for sp in self.species)
+        for sp in self.species:
+            norm = float(sp.get_adjusted_fitness_sum()/score_total)
+            sp.population_limit = norm * population_size
+
+        logger.debug('assigned population limits. total population: {}',
+                     sum(sp.population_limit for sp in self.species))
+       
+
+
     def evaluate_all_species(self):
         # TODO: evaluation should not be done per species but on the entire population.
         for sp in self.species:

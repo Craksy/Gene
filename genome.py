@@ -156,8 +156,7 @@ class Genome:
          # loops, potentially looping through every single combination of
          # elements in the network.
 
-         # REVIEW: if we add a weight that has previously been disabled, should
-         # we just reenable it instead?
+         # REVIEW: if we add a weight that has previously been disabled, should we just reenable it instead?
 
          matches = []
          logger.debug('mutating new weight')

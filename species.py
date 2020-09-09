@@ -39,7 +39,8 @@ class Species:
         # currently all non-matching genes are considered disjoint and are
         # scored the same
        
-        # compatibility coefficients. TODO: pull these from a configuration
+        # compatibility coefficients.
+        # TODO: pull compatibility coefficients from a configuration
         c1, c2, c3 = 1, 1, .5
 
         queen_innovs = {g.innovation:g for g in self.queen.connection_genes}
@@ -71,3 +72,6 @@ class Species:
                      weight_diff, weight_diff*c3)
 
         return score
+
+    def get_adjusted_fitness_sum(self):
+        return sum(genome.fitness / len(self.genomes) for genome in self.population)
