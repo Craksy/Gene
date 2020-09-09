@@ -4,8 +4,7 @@ from enum import Enum
 from copy import deepcopy
 from functools import namedtuple
 import random
-from logger import logger
-
+from loguru import logger
 
 class Innovation:
     next_innovation = 0
@@ -32,7 +31,6 @@ class ConnectionGene:
         self.weight = weight
         self.enabled = True
         self.innovation = Innovation.get_next()
-        self.species = None
 
     def copy(self):
         return deepcopy(self)
@@ -51,23 +49,44 @@ class Genome:
         """
         self.next_node_id = 0
         self.fitness = 0
-        # REVIEW: should nodes_genes be a dict mapping IDs to types instead?
-        self.node_genes = []
+        self.node_genes = {}
         self.connection_genes = []
         self.species = None
-        logger.debug('creating genome')
+        self.num_inputs = num_inputs
+        self.num_outputs = num_outputs
 
-        # initialize the genome with input and output nodes and fully connect
-        # them
+
+        for inp in range(num_inputs):
+            self.add_node('input')
+
         for out in range(num_outputs):
             self.add_node('output')
 
-        for inp in range(num_outputs, num_inputs+num_outputs):
-            self.add_node('input')
-            for out in range(num_outputs):
+
+    def initialize_genome(self):
+        """
+        initialize the genome with input and output nodes and fully connect
+        them
+        """
+        logger.debug('creating genome')
+
+        for inp in self.get_nodes_by_type('input'):
+            for out in self.get_nodes_by_type('output'):
                 rweight = self.generate_random_weight()
                 con = ConnectionGene(inp, out, rweight)
                 self.connection_genes.append(con)
+
+    def get_nodes_by_type(self, typ):
+        return [nid for nid,t in self.node_genes.items() if t == typ]
+
+    def has_connection(self, in_node, out_node):
+        for con in self.connection_genes:
+            if con.in_node == in_node and con.out_node == out_node:
+                return True
+        return False
+
+    def has_node(self, node_id):
+        return node_id in self.node_genes
 
     def generate_random_weight(self):
         return random.uniform(-2, 2)
@@ -75,7 +94,7 @@ class Genome:
     def add_node(self, typ):
         identity = self.next_node_id
         self.next_node_id += 1
-        self.node_genes.append(NodeGene(identity=identity, typ=typ))
+        self.node_genes[identity] = typ
         return identity
 
     def clone(self):
@@ -142,24 +161,24 @@ class Genome:
 
          matches = []
          logger.debug('mutating new weight')
-         for n1 in self.node_genes:
-            for n2 in self.node_genes:
-                if n2.typ == 'input' or \
-                   n1.typ == 'output' or \
-                   n1 is n2:
+         for id1, typ1 in self.node_genes.items():
+            for id2, typ2 in self.node_genes.items():
+                if typ2 == 'input' or \
+                   typ1 == 'output' or \
+                   id1 == id2:
                     continue
 
                 # search through all connection genes to find out if any of them
                 # connects n1 and n2
                 connected = False
-                logger.debug('\tchecking node pair: %s, %s',
-                             n1, n2)
+                logger.debug('\tchecking node pair: {}, {}',
+                             id1, id2)
                 for con in self.connection_genes:
-                    logger.debug('\t\tchecking connection: %s',
-                                 con)
-                    if (con.in_node == n1.identity and con.out_node == n2.identity):
-                        logger.debug('\t\t%s,%s is connected by %s. continue',
-                                     n1, n2, con)
+                    logger.debug('checking connection: {}',
+                                 repr(con))
+                    if (con.in_node == id1 and con.out_node == id2):
+                        logger.debug('{},{} is connected by {}. continue',
+                                     id1, id2, repr(con))
                         connected = True
                         break
 
@@ -167,16 +186,16 @@ class Genome:
                 # viable connections
                 if not connected:
                     logger.debug('\t\tpair not connected. adding to matches')
-                    matches.append((n1.identity, n2.identity))
+                    matches.append((id1, id2))
 
          if not matches:
             return
             raise Exception('Failed to mutate weight. No unconnected nodes excist')
-         logger.debug('\tmatches %s', matches)
+         logger.debug('\tmatches {}', str(matches))
 
          # pick a pair randomly from the found matches.
          n1, n2 = random.choice(matches)
-         logger.debug('\tpicked match: %s, %s', n1, n2)
+         logger.debug('\tpicked match: {}, {}', n1, n2)
          new_weight = self.generate_random_weight()
          new_con = ConnectionGene(n1, n2, new_weight)
          self.connection_genes.append(new_con)

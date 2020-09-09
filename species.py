@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from logger import logger
+from loguru import logger
 
 class Species:
     def __init__(self, queen_genome, sid):
@@ -63,11 +63,11 @@ class Species:
             for i in matching_genes], 0.0)
 
         score = len(disjoint_genes)*c1 + weight_diff*c3
-        logger.debug('genome had %i matching genes and %i disjoint genes',
+        logger.debug('genome had {} matching genes and {} disjoint genes',
                      len(matching_genes),
                      len(disjoint_genes))
 
-        logger.debug('difference in matching genes is %.3f and contributes %.3f to the total score',
+        logger.debug('difference in matching genes is {:.3f} and contributes {:.3f} to the total score',
                      weight_diff, weight_diff*c3)
 
         return score
