@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from genome import Genome
-from species import Species
+from .genome import Genome
+from .species import Species
 # from logger import logger
 from typing import List
 import math
@@ -56,6 +56,7 @@ class Gene:
     def run_generation(self):
         self.evaluate_all_species()
         self.speciate_population()
+        self.assign_population_cap()
         self.cull_population()
         self.repopulate()
 
