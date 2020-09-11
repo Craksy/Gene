@@ -7,24 +7,39 @@ from typing import List
 import math
 import random
 from loguru import logger
+from time import sleep
+from ruamel.yaml import YAML
+import importlib
+
+yaml = YAML()
 
 class Gene:
-    def __init__(self, configuration):
+    def __init__(self, config_path, fitness_function):
         # self.config = configuration
         # HACK: actually implement this, instead of this duct tape solution.
         # in fact i'm not even using this anywhere.
         # at this point i'm just writting meaningless comments to procrastinate.
-        self.config = dict(
-            fitness_function = lambda g: ...,
-            compatibility_threshold = .2
-        )
-        self._next_id = 0
-        self.species:List[Species] = []
 
+        # init logger
         logger.remove()
         logger.add('debug.log',
                    format='<green>{time:HH:mm:ss}</green> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>',
                    level='DEBUG', colorize=True)
+        logger.warning('------------------------------------------------------------')
+
+        # load config
+        self.config = None
+        logger.debug('loading config from: {}', config_path)
+        with open(config_path) as config_file:
+            self.config = yaml.load(config_file)
+
+        self.fitness_function = fitness_function
+
+        self.base_topology = self.config['general']['topology']
+
+        self._next_id = 0
+        self.species:List[Species] = []
+
 
     def get_next_species_id(self):
         self._next_id += 1
@@ -32,14 +47,17 @@ class Gene:
 
     def init_population(self):
         logger.debug('creating initial population')
-        first_queen = Genome(3,2)
+        first_queen = Genome(*self.base_topology)
         first_queen.initialize_genome()
 
         initial_species = self.add_new_species(first_queen)
-        while len(initial_species.population) < initial_species.population_limit:
-            new_genome = initial_species.queen.clone()
-            new_genome.mutate()
-            initial_species.add_genome(new_genome)
+        self.repopulate()
+
+    def run_generation(self):
+        self.evaluate_all_species()
+        self.speciate_population()
+        self.cull_population()
+        self.repopulate()
 
     def add_new_species(self, queen):
         logger.debug('adding new species from queen genome {}', queen)
@@ -63,10 +81,11 @@ class Gene:
         logger.debug('compiling population list')
         population = []
         for sp in self.species:
+            sp.queen = random.choice(sp.population)
             for genome in sp.population:
                 population.append(genome)
         # TODO: pull comparison threshold from config
-        comp_threshold = 7
+        comp_threshold = 3
 
         for genome in population:
             # yeah this doesn't really make sense untill i give genomes ids.
@@ -92,6 +111,7 @@ class Gene:
             genome.species.remove_genome(genome)
             self.add_new_species(genome)
 
+
     def cull_population(self):
         """
         Eliminate the worst performing genomes from each species
@@ -99,12 +119,13 @@ class Gene:
         for sp in self.species:
             # TODO: culling should probably be a method of the species class
             sp.population = sorted(sp.population, key=lambda g: g.fitness)
-            popsize = len(sp.populaton)
+            popsize = len(sp.population)
             halfpop = math.floor(popsize/2)
             sp.population = sp.population[halfpop:]
 
 
     def crossover(self, parent_a:Genome, parent_b:Genome):
+        # TODO: move this function to the species class along with repopulate()
         pa_innovs = {g.innovation:g for g in parent_a.connection_genes}
         pb_innovs = {g.innovation:g for g in parent_b.connection_genes}
         pa_set = set(pa_innovs)
@@ -114,7 +135,8 @@ class Gene:
 
         new_genome_connections = []
 
-        new_genome = Genome(3,2)
+        new_genome = Genome(*self.base_topology)
+        new_genome.species = parent_a.species
         # for every matching innovation pick a random parent and pass on that
         # parents corresponding gene to the child
         for gene in matching_genes:
@@ -122,9 +144,6 @@ class Gene:
                 new_genome.connection_genes.append(pa_innovs[gene].copy())
             else:
                 new_genome.connection_genes.append(pb_innovs[gene].copy())
-
-        # create the new genome and add the in- and outputs from a parent.
-
 
         # for every disjoint gene find out which parent it belongs to, and pass
         # it on
@@ -145,7 +164,7 @@ class Gene:
                 new_genome.connection_genes.append(gene.copy())
 
         logger.debug('added all genes. new gene pool:{}',
-                     [g.innovation for g in new_genome_connections])
+                     [g.innovation for g in new_genome.connection_genes])
 
 
         for con in new_genome.connection_genes:
@@ -158,26 +177,56 @@ class Gene:
         logger.debug('{}', new_genome.connection_genes)
         return new_genome
 
-    def assign_population_cap(self):
-        # TODO: assign population caps based on shared fitness.
-        # to do this first compile a list of adjusted fitness scores of all
-        # species. normalize the list and assign each species a population cap
-        # equal to the total population limit multiplied by their normalized
-        # score.
+    def repopulate(self):
+        for sp in self.species:
+            logger.debug('repopulating species {}', sp)
+            logger.debug('current population of size {}: {}', len(sp.population), sp)
+            # sleep(1)
+            new_population = []
 
+            # if there's only a single genome in a species, clone it once so
+            # that it has a mate to reproduce with. some next level incest.
+            if len(sp.population) == 1:
+                logger.debug('only one genome. cloning to make a mate.')
+                g = sp.population[0]
+                clone = g.clone()
+                clone.mutate()
+                sp.add_genome(clone)
+                logger.debug('length after cloning: {}', len(sp.population))
+
+            # keep mating random genomes until the new population reaches the
+            # cap.
+            while len(new_population) < sp.population_limit:
+                candidates = sp.population.copy()
+                logger.debug('mating. chosing between candidates: {}', candidates)
+                parent_a = random.choice(candidates)
+                candidates.remove(parent_a)
+                parent_b = random.choice(candidates)
+
+                offspring = self.crossover(parent_a, parent_b)
+                offspring.mutate()
+                new_population.append(offspring)
+
+            # replace the old population with the newly generated one
+        sp.population = new_population
+        logger.debug('species population size after repopulating: {}', len(sp.population))
+        logger.debug('allowed population size was: {}', sp.population_limit)
+
+    def assign_population_cap(self):
+        """
+        Assign new population limit to each species based on their shared
+        fitness scores"""
         population_size = 50
 
-        score_total = sum(sp.get_adjusted_fitness() for sp in self.species)
+        score_total = sum(sp.get_adjusted_fitness_sum() for sp in self.species)
         for sp in self.species:
-            norm = float(sp.get_adjusted_fitness_sum()/score_total)
-            sp.population_limit = norm * population_size
+            norm = float(sp.get_adjusted_fitness_sum()) / score_total
+            sp.population_limit = round(norm * population_size)
+            # REVIEW: if a population is allowed zero genomes, should we kill it off?
 
         logger.debug('assigned population limits. total population: {}',
                      sum(sp.population_limit for sp in self.species))
        
-
-
     def evaluate_all_species(self):
-        # TODO: evaluation should not be done per species but on the entire population.
         for sp in self.species:
-            sp.evaluate_population(self.config['fitness_function'])
+            sp.evaluate_population(self.fitness_function)

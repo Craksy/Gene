@@ -36,9 +36,9 @@ class ConnectionGene:
         return deepcopy(self)
 
     def __repr__(self):
-         return 'ConnectionGene({}, {}, {})'.format(self.in_node,
+         return 'Connection(in{}|out{}|inno{})'.format(self.in_node,
                                                     self.out_node,
-                                                    self.weight)
+                                                    self.innovation)
 
 class Genome:
     # TODO: give each genome an ID.
@@ -106,29 +106,32 @@ class Genome:
 
         # TODO: pull mutate probabilities from config
         probabilities = dict(
-            new_node = .15,
-            new_weight = .25,
-            modify_weight = .5,
-            mutate_again = .5
+            new_node = .20,
+            new_weight = .35,
+            modify_weight = .6,
+            mutate_again = .2
         )
+        logger.debug('mutating')
 
         r = random.random()
-        if r >= probabilities['new_node']:
+        if r <= probabilities['new_node']:
             self.mutate_new_node()
 
         r = random.random()
-        if r >= probabilities['new_weight']:
+        if r <= probabilities['new_weight']:
             self.mutate_new_weight()
 
         r = random.random()
-        if r >= probabilities['modify_weight']:
+        if r <= probabilities['modify_weight']:
             self.mutate_modify_weight()
 
         r = random.random()
-        if r >= probabilities['mutate_again']:
+        if r <= probabilities['mutate_again']:
+            logger.debug('mutating again')
             self.mutate()
 
     def mutate_modify_weight(self):
+        logger.debug('modifying existing weight')
         con = random.choice(self.connection_genes)
         amount = random.random() - .5
         con.weight += amount
@@ -170,31 +173,31 @@ class Genome:
                 # search through all connection genes to find out if any of them
                 # connects n1 and n2
                 connected = False
-                logger.debug('\tchecking node pair: {}, {}',
-                             id1, id2)
+                # logger.debug('\tchecking node pair: {}, {}',
+                             # id1, id2)
                 for con in self.connection_genes:
-                    logger.debug('checking connection: {}',
-                                 repr(con))
+                    # logger.debug('checking connection: {}',
+                                 # repr(con))
                     if (con.in_node == id1 and con.out_node == id2):
-                        logger.debug('{},{} is connected by {}. continue',
-                                     id1, id2, repr(con))
+                        # logger.debug('{},{} is connected by {}. continue',
+                                     # id1, id2, repr(con))
                         connected = True
                         break
 
                 # if no gene connects the pair, add that pair to our list of
                 # viable connections
                 if not connected:
-                    logger.debug('\t\tpair not connected. adding to matches')
+                    # logger.debug('\t\tpair not connected. adding to matches')
                     matches.append((id1, id2))
 
          if not matches:
             return
             raise Exception('Failed to mutate weight. No unconnected nodes excist')
-         logger.debug('\tmatches {}', str(matches))
+         # logger.debug('\tmatches {}', str(matches))
 
          # pick a pair randomly from the found matches.
          n1, n2 = random.choice(matches)
-         logger.debug('\tpicked match: {}, {}', n1, n2)
+         logger.debug('adding new weight between: {}, {}', n1, n2)
          new_weight = self.generate_random_weight()
          new_con = ConnectionGene(n1, n2, new_weight)
          self.connection_genes.append(new_con)

@@ -32,6 +32,18 @@ class Species:
     def remove_genome(self, genome):
         self.population.remove(genome)
 
+
+    def repopulate(self):
+        # this function depends on crossover() so it wont be put in used until
+        # that has been moved over as well
+        new_population = []
+        if len(self.population) == 1:
+            g = self.population[0]
+            clone = g.clone()
+            clone.mutate()
+            self.add_genome(clone)
+
+
     def get_compatibility_score(self, genome):
         """check a genome to find out if it's compatible with this spiecies"""
 
@@ -74,4 +86,4 @@ class Species:
         return score
 
     def get_adjusted_fitness_sum(self):
-        return sum(genome.fitness / len(self.genomes) for genome in self.population)
+        return sum(genome.fitness / len(self.population) for genome in self.population)
