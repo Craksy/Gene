@@ -1,0 +1,30 @@
+fitness_function: ./xor_fitness.py
+topology: [3,2]
+population_size: 100
+
+species:
+  # how many generations are species allowed to survive if they don't improve
+  stagnation_threshold: 2
+
+  compatibility:
+    # score threshold to consider a genome compatible.
+    threshold: 3
+
+    # coefficients used to calculate compatibility score.
+    # in the original paper these are called c1, c2, and c3 respectively
+    coefficients:
+      disjoint: 1
+      excess: 1
+      weight: 0.5
+
+
+genome:
+  mutation_probabilities:
+    new_node: 0.2
+    new_weight: 0.35
+    modify_weight: 0.6
+    mutate_again: 0.2
+
+
+network:
+  activation_function: tanh
