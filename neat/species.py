@@ -9,8 +9,9 @@ class Species:
        self.add_genome(self.queen)
        self.population_limit = 50
        self.population_fitness = 0
+       self.fittest_genome = None
 
-    def evaluate_population(self, fitness_function):
+    def evaluate_population(self, fitness_function, batch = False):
         """evaluate the entire population by passing each genome to a fitness
         function, assign fitness scores according to
         their performance, and calculate the entire spiecies average fitness.
@@ -19,11 +20,15 @@ class Species:
         evaluates it's performance, and returns a score.
         """
 
-        total_score = 0
-        for genome in self.population:
-            score = fitness_function(genome)
-            genome.fitness = score
-        self.population_fitness = total_score / len(self.population)
+        if batch:
+            scores = fitness_function(self.population)
+            for gen, score in zip(self.populatoin, scores):
+                gen.fitness = score
+        else:
+            for genome in self.population:
+                score = fitness_function(genome)
+                genome.fitness = score
+        self.fittest_genome = sorted(self.population, key=lambda g: g.fitness,reverse=True)[0]
 
     def add_genome(self, genome):
         self.population.append(genome)
