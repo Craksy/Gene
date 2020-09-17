@@ -35,10 +35,11 @@ class Gene:
 
         self.fitness_function = fitness_function
 
-        self.base_topology = self.config['general']['topology']
+        self.base_topology = self.config['topology']
 
         self._next_id = 0
         self.species:List[Species] = []
+        self.fittest_genome = None
 
 
     def get_next_species_id(self):
@@ -52,13 +53,14 @@ class Gene:
 
         initial_species = self.add_new_species(first_queen)
         self.repopulate()
+        self.evaluate_all_species()
 
     def run_generation(self):
-        self.evaluate_all_species()
         self.speciate_population()
         self.assign_population_cap()
         self.cull_population()
         self.repopulate()
+        self.evaluate_all_species()
 
     def add_new_species(self, queen):
         logger.debug('adding new species from queen genome {}', queen)
@@ -86,7 +88,7 @@ class Gene:
             for genome in sp.population:
                 population.append(genome)
         # TODO: pull comparison threshold from config
-        comp_threshold = 3
+        comp_threshold = self.config['species']['compatibility']['threshold']
 
         for genome in population:
             # yeah this doesn't really make sense untill i give genomes ids.
@@ -151,12 +153,12 @@ class Gene:
         logger.debug('passing disjoint genes')
         logger.debug('{}', disjoint_genes)
         for innov in disjoint_genes:
-            logger.debug('\tchecking {}', innov)
+            logger.debug('checking {}', innov)
             if innov in pa_innovs:
                 gene = pa_innovs[innov]
-                logger.debug('\t\tinnovation {} was in a', innov)
+                logger.debug('innovation {} was in a', innov)
             elif innov in pb_innovs:
-                logger.debug('\t\tinnovation {} was in b', innov)
+                logger.debug('innovation {} was in b', innov)
                 gene = pb_innovs[innov]
             else:
                 continue
@@ -213,16 +215,22 @@ class Gene:
         logger.debug('species population size after repopulating: {}', len(sp.population))
         logger.debug('allowed population size was: {}', sp.population_limit)
 
+    def remove_species(self, species):
+        self.species.remove(species)
+
     def assign_population_cap(self):
         """
         Assign new population limit to each species based on their shared
-        fitness scores"""
+        fitns scores
+        """
         population_size = 50
 
         score_total = sum(sp.get_adjusted_fitness_sum() for sp in self.species)
         for sp in self.species:
             norm = float(sp.get_adjusted_fitness_sum()) / score_total
             sp.population_limit = round(norm * population_size)
+            if sp.population_limit <= 0:
+                self.remove_species(sp)
             # REVIEW: if a population is allowed zero genomes, should we kill it off?
 
         logger.debug('assigned population limits. total population: {}',
@@ -231,3 +239,6 @@ class Gene:
     def evaluate_all_species(self):
         for sp in self.species:
             sp.evaluate_population(self.fitness_function)
+        self.fittest_genome = sorted(self.species,
+                                     key=lambda sp: sp.fittest_genome.fitness,
+                                     reverse=True)[0]

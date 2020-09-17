@@ -55,7 +55,6 @@ class Genome:
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
 
-
         for inp in range(num_inputs):
             self.add_node('input')
 

@@ -114,3 +114,4 @@ class Network:
                 exhausted_nodes.append(node)
         if self.output_fired:
             self.output = self.get_current_state()
+        return self.get_current_state()
